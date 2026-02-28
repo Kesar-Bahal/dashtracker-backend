@@ -1,0 +1,45 @@
+.activity-container {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f9fafb;
+}
+
+.activity-box {
+  background: white;
+  padding: 40px;
+  width: 400px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.activity-box h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.activity-box form {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-box input {
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.activity-box button {
+  padding: 10px;
+  border: none;
+  background-color: #4f46e5;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.activity-box button:hover {
+  background-color: #4338ca;
+}

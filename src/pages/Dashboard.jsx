@@ -1,128 +1,257 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 
-function Dashboard() {
-  const [subjects, setSubjects] = useState([
-    { name: "DSA", topics: [] }
-  ]);
+const BASE_URL = "https://dashtracker-backen.onrender.com";
 
+function Dashboard() {
+  const navigate = useNavigate();
+
+  const [subjects, setSubjects] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [newSubject, setNewSubject] = useState("");
   const [newTopic, setNewTopic] = useState("");
   const [newTask, setNewTask] = useState({});
-  const [visits, setVisits] = useState(0);
   const [darkMode, setDarkMode] = useState(true);
+  const [visits, setVisits] = useState(0);
+  const [userEmail, setUserEmail] = useState("");
 
+  const token = localStorage.getItem("token");
   const selectedSubject = subjects[selectedIndex] || { topics: [] };
 
-  /* ===== VISITS ===== */
+  /* ================= LOAD DATA ================= */
   useEffect(() => {
-    const stored = localStorage.getItem("visits");
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || !token) {
+      navigate("/");
+      return;
+    }
+
+    setUserEmail(user.email);
+
+    fetch(`${BASE_URL}/subjects`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setSubjects(data);
+      });
+  }, [navigate, token]);
+
+  /* ================= VISITS ================= */
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) return;
+
+    const sessionKey = `visited_${user.id}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+
+    const key = `visits_${user.id}`;
+    const stored = localStorage.getItem(key);
     const count = stored ? +stored + 1 : 1;
-    localStorage.setItem("visits", count);
+
+    localStorage.setItem(key, count);
     setVisits(count);
+
+    sessionStorage.setItem(sessionKey, "true");
   }, []);
 
-  /* ===== SUBJECT ===== */
+  const handleLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate("/");
+  };
 
-  const addSubject = () => {
+  /* ================= SUBJECT ================= */
+
+  const addSubject = async () => {
     if (!newSubject.trim()) return;
-    setSubjects([...subjects, { name: newSubject, topics: [] }]);
+
+    const res = await fetch(`${BASE_URL}/subjects`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ name: newSubject })
+    });
+
+    const data = await res.json();
+    setSubjects([...subjects, { ...data, topics: [] }]);
     setNewSubject("");
   };
 
-  const editSubject = (index) => {
+  const editSubject = async (index) => {
     const newName = prompt("Edit subject name:");
     if (!newName?.trim()) return;
+
+    const subject = subjects[index];
+
+    await fetch(`${BASE_URL}/subjects/${subject.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ name: newName })
+    });
 
     const updated = [...subjects];
     updated[index].name = newName;
     setSubjects(updated);
   };
 
-  const deleteSubject = (index) => {
-    if (!window.confirm("Delete subject?")) return;
-    const updated = subjects.filter((_, i) => i !== index);
-    setSubjects(updated);
+  const deleteSubject = async (id) => {
+    await fetch(`${BASE_URL}/subjects/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    setSubjects(subjects.filter(s => s.id !== id));
     setSelectedIndex(0);
   };
 
-  /* ===== TOPIC ===== */
+  /* ================= TOPIC ================= */
 
-  const addTopic = () => {
+  const addTopic = async () => {
     if (!newTopic.trim()) return;
 
-    const updated = [...subjects];
-    updated[selectedIndex].topics.push({
-      name: newTopic,
-      tasks: []
+    const res = await fetch(`${BASE_URL}/topics`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        name: newTopic,
+        subject_id: selectedSubject.id
+      })
     });
 
+    const data = await res.json();
+
+    const updated = [...subjects];
+    updated[selectedIndex].topics.push({ ...data, tasks: [] });
     setSubjects(updated);
     setNewTopic("");
   };
 
-  /* ===== TASK ===== */
+  const editTopic = async (topicId, topicIndex) => {
+    const newName = prompt("Edit topic name:");
+    if (!newName?.trim()) return;
 
-  const addTask = (topicIndex) => {
-    if (!newTask[topicIndex]?.trim()) return;
-
-    const updated = [...subjects];
-    updated[selectedIndex].topics[topicIndex].tasks.push({
-      title: newTask[topicIndex],
-      completed: false
+    await fetch(`${BASE_URL}/topics/${topicId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ name: newName })
     });
 
+    const updated = [...subjects];
+    updated[selectedIndex].topics[topicIndex].name = newName;
+    setSubjects(updated);
+  };
+
+  const deleteTopic = async (topicId, topicIndex) => {
+    await fetch(`${BASE_URL}/topics/${topicId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const updated = [...subjects];
+    updated[selectedIndex].topics.splice(topicIndex, 1);
+    setSubjects(updated);
+  };
+
+  /* ================= TASK ================= */
+
+  const addTask = async (topicIndex) => {
+    if (!newTask[topicIndex]?.trim()) return;
+
+    const topic = selectedSubject.topics[topicIndex];
+
+    const res = await fetch(`${BASE_URL}/tasks`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        title: newTask[topicIndex],
+        topic_id: topic.id
+      })
+    });
+
+    const data = await res.json();
+
+    const updated = [...subjects];
+    updated[selectedIndex].topics[topicIndex].tasks.push(data);
     setSubjects(updated);
     setNewTask({ ...newTask, [topicIndex]: "" });
   };
 
-  const toggleTask = (topicIndex, taskIndex) => {
-    const updated = [...subjects];
-    updated[selectedIndex].topics[topicIndex].tasks[
-      taskIndex
-    ].completed =
-      !updated[selectedIndex].topics[topicIndex].tasks[
-        taskIndex
-      ].completed;
-
-    setSubjects(updated);
-  };
-
-  const editTask = (topicIndex, taskIndex) => {
+  const editTask = async (task, topicIndex, taskIndex) => {
     const newTitle = prompt("Edit task:");
     if (!newTitle?.trim()) return;
 
-    const updated = [...subjects];
-    updated[selectedIndex].topics[topicIndex].tasks[
-      taskIndex
-    ].title = newTitle;
+    await fetch(`${BASE_URL}/tasks/${task.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ title: newTitle })
+    });
 
+    const updated = [...subjects];
+    updated[selectedIndex].topics[topicIndex].tasks[taskIndex].title = newTitle;
     setSubjects(updated);
   };
 
-  const deleteTask = (topicIndex, taskIndex) => {
+  const toggleTask = async (topicIndex, taskIndex) => {
     const updated = [...subjects];
-    updated[selectedIndex].topics[topicIndex].tasks.splice(
-      taskIndex,
-      1
-    );
+    const task = updated[selectedIndex].topics[topicIndex].tasks[taskIndex];
 
+    await fetch(`${BASE_URL}/tasks/${task.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ completed: !task.completed })
+    });
+
+    task.completed = !task.completed;
     setSubjects(updated);
   };
 
-  /* ===== PROGRESS ===== */
+  const deleteTask = async (taskId, topicIndex, taskIndex) => {
+    await fetch(`${BASE_URL}/tasks/${taskId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-  const totalTasks = selectedSubject.topics.reduce(
-    (acc, topic) => acc + topic.tasks.length,
-    0
-  );
+    const updated = [...subjects];
+    updated[selectedIndex].topics[topicIndex].tasks.splice(taskIndex, 1);
+    setSubjects(updated);
+  };
 
-  const completedTasks = selectedSubject.topics.reduce(
-    (acc, topic) =>
-      acc + topic.tasks.filter((t) => t.completed).length,
-    0
-  );
+  /* ================= STATS ================= */
+
+  const totalTasks =
+    selectedSubject.topics?.reduce(
+      (acc, topic) => acc + topic.tasks.length,
+      0
+    ) || 0;
+
+  const completedTasks =
+    selectedSubject.topics?.reduce(
+      (acc, topic) =>
+        acc + topic.tasks.filter(t => t.completed).length,
+      0
+    ) || 0;
 
   const progress =
     totalTasks === 0
@@ -132,30 +261,20 @@ function Dashboard() {
   return (
     <div className={`dashboard ${darkMode ? "dark" : "light"}`}>
 
-      {/* ===== SIDEBAR ===== */}
+      {/* SIDEBAR */}
       <div className="sidebar">
         <h2>DashTracker</h2>
 
         {subjects.map((sub, index) => (
           <div
-            key={index}
-            className={`subject-item ${
-              index === selectedIndex ? "active" : ""
-            }`}
+            key={sub.id}
+            className={`subject-item ${index === selectedIndex ? "active" : ""}`}
             onClick={() => setSelectedIndex(index)}
           >
             <span>{sub.name}</span>
-
-            <div
-              className="subject-actions"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button onClick={() => editSubject(index)}>
-                ✏
-              </button>
-              <button onClick={() => deleteSubject(index)}>
-                🗑
-              </button>
+            <div className="subject-actions" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => editSubject(index)}>✏</button>
+              <button onClick={() => deleteSubject(sub.id)}>🗑</button>
             </div>
           </div>
         ))}
@@ -171,60 +290,32 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* ===== MAIN ===== */}
+      {/* MAIN */}
       <div className="main-content">
 
-        {/* ===== TOPBAR ===== */}
         <div className="topbar">
-          <h3>Welcome Back 👋</h3>
-          <button
-            className="mode-toggle"
-            onClick={() => setDarkMode(!darkMode)}
-          >
-            {darkMode ? "☀ Light" : "🌙 Dark"}
-          </button>
+          <div>
+            <h3>Welcome Back 👋</h3>
+            <small>{userEmail}</small>
+          </div>
+
+          <div className="top-buttons">
+            <button onClick={() => setDarkMode(!darkMode)}>
+              {darkMode ? "☀ Light" : "🌙 Dark"}
+            </button>
+            <button onClick={handleLogout}>Logout</button>
+          </div>
         </div>
 
         <h1>{selectedSubject.name}</h1>
 
-        {/* ===== STATS GRID ===== */}
         <div className="stats-grid">
-          <div className="stat-card">
-            <h4>Total Tasks</h4>
-            <p>{totalTasks}</p>
-          </div>
-
-          <div className="stat-card">
-            <h4>Completed</h4>
-            <p>{completedTasks}</p>
-          </div>
-
-          <div className="stat-card">
-            <h4>Progress</h4>
-            <p>{progress}%</p>
-          </div>
-
-          <div className="stat-card">
-            <h4>Visits</h4>
-            <p>{visits}</p>
-          </div>
+          <div className="stat-card"><h4>Total Tasks</h4><p>{totalTasks}</p></div>
+          <div className="stat-card"><h4>Completed</h4><p>{completedTasks}</p></div>
+          <div className="stat-card"><h4>Progress</h4><p>{progress}%</p></div>
+          <div className="stat-card"><h4>Visits</h4><p>{visits}</p></div>
         </div>
 
-        {/* ===== LINE GRAPH STYLE ===== */}
-        <div className="analysis-card">
-          <h3>Weekly Performance</h3>
-          <div className="line-chart">
-            {[20, 50, 35, 70, 60, 80, 55].map((val, i) => (
-              <div
-                key={i}
-                className="line-point"
-                style={{ height: `${val}%` }}
-              ></div>
-            ))}
-          </div>
-        </div>
-
-        {/* ===== ADD TOPIC ===== */}
         <div className="add-section">
           <input
             type="text"
@@ -232,51 +323,43 @@ function Dashboard() {
             value={newTopic}
             onChange={(e) => setNewTopic(e.target.value)}
           />
-          <button onClick={addTopic}>+ Add</button>
+          <button onClick={addTopic}>+ Add Topic</button>
         </div>
 
-        {/* ===== TOPICS ===== */}
         <div className="topics">
-          {selectedSubject.topics.map((topic, topicIndex) => (
-            <div key={topicIndex} className="topic-card">
+          {selectedSubject.topics?.map((topic, topicIndex) => (
+            <div key={topic.id} className="topic-card">
 
-              <h3>{topic.name}</h3>
+              <div className="topic-header">
+                <h3>{topic.name}</h3>
+                <div className="topic-actions">
+                  <button onClick={() => editTopic(topic.id, topicIndex)}>✏</button>
+                  <button onClick={() => deleteTopic(topic.id, topicIndex)}>🗑</button>
+                </div>
+              </div>
 
               {topic.tasks.map((task, taskIndex) => (
-                <div
-                  key={taskIndex}
-                  className="task-item"
-                  onClick={() =>
-                    toggleTask(topicIndex, taskIndex)
-                  }
-                >
-                  <span
-                    className={
-                      task.completed ? "completed" : ""
-                    }
-                  >
-                    {task.title}
-                  </span>
+                <div key={task.id} className="task-item">
 
                   <div
-                    className="task-actions"
-                    onClick={(e) => e.stopPropagation()}
+                    className="task-left"
+                    onClick={() => toggleTask(topicIndex, taskIndex)}
                   >
-                    <button
-                      onClick={() =>
-                        editTask(topicIndex, taskIndex)
-                      }
-                    >
-                      ✏
-                    </button>
-                    <button
-                      onClick={() =>
-                        deleteTask(topicIndex, taskIndex)
-                      }
-                    >
-                      🗑
-                    </button>
+                    <div className={`checkbox ${task.completed ? "checked" : ""}`}>
+                      {task.completed && "✔"}
+                    </div>
+                    <span className={task.completed ? "completed" : ""}>
+                      {task.title}
+                    </span>
                   </div>
+
+                  <div className="task-actions">
+                    <button onClick={() => editTask(task, topicIndex, taskIndex)}>✏</button>
+                    <button onClick={() =>
+                      deleteTask(task.id, topicIndex, taskIndex)
+                    }>🗑</button>
+                  </div>
+
                 </div>
               ))}
 
@@ -293,7 +376,7 @@ function Dashboard() {
                   }
                 />
                 <button onClick={() => addTask(topicIndex)}>
-                  + Add
+                  + Add Task
                 </button>
               </div>
 

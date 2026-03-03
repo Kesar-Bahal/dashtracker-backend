@@ -1,14 +1,57 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./Login.css";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  // ✅ Render backend URL
+  const BASE_URL = "https://dashtracker-backen.onrender.com";
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    console.log("Login:", email, password);
+
+    if (!email || !password) {
+      alert("Please enter email and password");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${BASE_URL}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Login failed");
+        return;
+      }
+
+      // ✅ Store token
+      localStorage.setItem("token", data.token);
+
+      // ✅ Store user (id + email)
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          id: data.user.id,
+          email: data.user.email,
+        })
+      );
+
+      navigate("/dashboard");
+
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Server error");
+    }
   };
 
   return (
@@ -40,7 +83,8 @@ function Login() {
         </form>
 
         <p>
-          Don’t have an account? <Link to="/register">Register</Link>
+          Don’t have an account?{" "}
+          <Link to="/register">Register</Link>
         </p>
       </div>
     </div>

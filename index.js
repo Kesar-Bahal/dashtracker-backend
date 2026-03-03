@@ -10,6 +10,57 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+/* ================= ROOT ROUTE ================= */
+
+app.get("/", (req, res) => {
+  res.send("DashTracker Backend Running 🚀");
+});
+
+/* ================= DATABASE + TABLE INIT ================= */
+
+pool.connect()
+  .then(async () => {
+    console.log("Database connected ✅");
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(200) NOT NULL
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS subjects (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS topics (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        subject_id INTEGER REFERENCES subjects(id) ON DELETE CASCADE
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(200),
+        topic_id INTEGER REFERENCES topics(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        completed BOOLEAN DEFAULT false
+      );
+    `);
+
+    console.log("All tables ready ✅");
+  })
+  .catch(err => console.log(err));
+
 /* ================= JWT MIDDLEWARE ================= */
 
 const authenticateToken = (req, res, next) => {
@@ -105,7 +156,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-/* ================= GET SUBJECT TREE ================= */
+/* ================= SUBJECTS ================= */
 
 app.get("/subjects", authenticateToken, async (req, res) => {
   try {
@@ -119,7 +170,6 @@ app.get("/subjects", authenticateToken, async (req, res) => {
     const result = [];
 
     for (let subject of subjects.rows) {
-
       const topics = await pool.query(
         "SELECT * FROM topics WHERE subject_id = $1",
         [subject.id]
@@ -128,7 +178,6 @@ app.get("/subjects", authenticateToken, async (req, res) => {
       const topicData = [];
 
       for (let topic of topics.rows) {
-
         const tasks = await pool.query(
           "SELECT * FROM tasks WHERE topic_id = $1 AND user_id = $2",
           [topic.id, userId]
@@ -154,8 +203,6 @@ app.get("/subjects", authenticateToken, async (req, res) => {
   }
 });
 
-/* ================= ADD SUBJECT ================= */
-
 app.post("/subjects", authenticateToken, async (req, res) => {
   try {
     const { name } = req.body;
@@ -174,8 +221,6 @@ app.post("/subjects", authenticateToken, async (req, res) => {
   }
 });
 
-/* ================= DELETE SUBJECT ================= */
-
 app.delete("/subjects/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -186,10 +231,7 @@ app.delete("/subjects/:id", authenticateToken, async (req, res) => {
       [id, userId]
     );
 
-    await pool.query(
-      "DELETE FROM topics WHERE subject_id = $1",
-      [id]
-    );
+    await pool.query("DELETE FROM topics WHERE subject_id = $1", [id]);
 
     await pool.query(
       "DELETE FROM subjects WHERE id = $1 AND user_id = $2",
@@ -204,7 +246,7 @@ app.delete("/subjects/:id", authenticateToken, async (req, res) => {
   }
 });
 
-/* ================= ADD TOPIC ================= */
+/* ================= TOPICS ================= */
 
 app.post("/topics", authenticateToken, async (req, res) => {
   try {
@@ -222,8 +264,6 @@ app.post("/topics", authenticateToken, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
-/* ================= UPDATE TOPIC ================= */
 
 app.put("/topics/:id", authenticateToken, async (req, res) => {
   try {
@@ -243,8 +283,6 @@ app.put("/topics/:id", authenticateToken, async (req, res) => {
   }
 });
 
-/* ================= DELETE TOPIC ================= */
-
 app.delete("/topics/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -255,10 +293,7 @@ app.delete("/topics/:id", authenticateToken, async (req, res) => {
       [id, userId]
     );
 
-    await pool.query(
-      "DELETE FROM topics WHERE id = $1",
-      [id]
-    );
+    await pool.query("DELETE FROM topics WHERE id = $1", [id]);
 
     res.json({ message: "Topic deleted successfully" });
 
@@ -268,7 +303,7 @@ app.delete("/topics/:id", authenticateToken, async (req, res) => {
   }
 });
 
-/* ================= ADD TASK ================= */
+/* ================= TASKS ================= */
 
 app.post("/tasks", authenticateToken, async (req, res) => {
   try {
@@ -287,8 +322,6 @@ app.post("/tasks", authenticateToken, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
-/* ================= UPDATE TASK ================= */
 
 app.put("/tasks/:id", authenticateToken, async (req, res) => {
   try {
@@ -309,8 +342,6 @@ app.put("/tasks/:id", authenticateToken, async (req, res) => {
   }
 });
 
-/* ================= DELETE TASK ================= */
-
 app.delete("/tasks/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -329,6 +360,10 @@ app.delete("/tasks/:id", authenticateToken, async (req, res) => {
   }
 });
 
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
+/* ================= SERVER ================= */
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

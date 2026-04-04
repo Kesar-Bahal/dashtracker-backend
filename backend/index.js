@@ -207,7 +207,9 @@ app.get("/user/:id", async (req, res) => {
 app.get("/test", (req, res) => {
   res.send("Route working ✅");
 });
-
+app.get("/", (req, res) => {
+  res.send("Backend working 🚀");
+});
 // ================= SERVER =================
 
 app.listen(5000, () => {

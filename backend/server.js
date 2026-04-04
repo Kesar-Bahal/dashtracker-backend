@@ -1,4 +1,5 @@
 console.log("🔥 CORRECT SERVER FILE LOADED 🔥");
+
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
@@ -8,20 +9,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ================= ROOT =================
 app.get("/", (req, res) => {
   res.send("Backend Running 🚀");
 });
 
-// DB connection test
+// ================= DB TEST =================
 pool.connect()
   .then(() => console.log("Database Connected ✅"))
   .catch(err => console.error("DB Error ❌", err));
 
-/* ================= AUTH ================= */
+// ================= AUTH =================
 
+// REGISTER
 app.post("/register", async (req, res) => {
+  console.log("🔥 REGISTER BODY:", req.body);
+
   try {
     const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "All fields required" });
+    }
 
     const newUser = await pool.query(
       "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *",
@@ -30,19 +39,29 @@ app.post("/register", async (req, res) => {
 
     res.json(newUser.rows[0]);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    console.log("🔥 REGISTER ERROR:", err.message);
+    res.status(500).send(err.message);
   }
 });
 
+// LOGIN
 app.post("/login", async (req, res) => {
+
+  console.log("🔥 LOGIN BODY:", req.body);
+
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email or Password missing" });
+    }
 
     const user = await pool.query(
       "SELECT * FROM users WHERE email = $1",
       [email]
     );
+
+    console.log("🔥 USER FROM DB:", user.rows);
 
     if (user.rows.length === 0) {
       return res.status(400).json({ message: "User not found" });
@@ -53,15 +72,18 @@ app.post("/login", async (req, res) => {
     }
 
     res.json(user.rows[0]);
+
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    console.log("🔥 LOGIN ERROR:", err.message);
+    res.status(500).send(err.message);
   }
 });
 
-/* ================= SUBJECTS ================= */
+// ================= SUBJECTS =================
 
 app.post("/subjects", async (req, res) => {
+  console.log("🔥 SUBJECT BODY:", req.body);
+
   try {
     const { user_id, name } = req.body;
 
@@ -72,26 +94,11 @@ app.post("/subjects", async (req, res) => {
 
     res.json(subject.rows[0]);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    console.log("🔥 SUBJECT ERROR:", err.message);
+    res.status(500).send(err.message);
   }
 });
-app.put("/tasks/edit/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title } = req.body;
 
-    await pool.query(
-      "UPDATE tasks SET title = $1 WHERE id = $2",
-      [title, id]
-    );
-
-    res.json({ message: "Task Updated Successfully" });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
-  }
-});
 app.get("/subjects/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
@@ -103,12 +110,12 @@ app.get("/subjects/:userId", async (req, res) => {
 
     res.json(subjects.rows);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    console.log("🔥 GET SUBJECT ERROR:", err.message);
+    res.status(500).send(err.message);
   }
 });
 
-/* ================= TOPICS ================= */
+// ================= TOPICS =================
 
 app.post("/topics", async (req, res) => {
   try {
@@ -121,12 +128,12 @@ app.post("/topics", async (req, res) => {
 
     res.json(topic.rows[0]);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    console.log("🔥 TOPIC ERROR:", err.message);
+    res.status(500).send(err.message);
   }
 });
 
-/* ================= TASKS ================= */
+// ================= TASKS =================
 
 app.post("/tasks", async (req, res) => {
   try {
@@ -139,8 +146,8 @@ app.post("/tasks", async (req, res) => {
 
     res.json(task.rows[0]);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    console.log("🔥 TASK ERROR:", err.message);
+    res.status(500).send(err.message);
   }
 });
 
@@ -155,12 +162,29 @@ app.put("/tasks/:id", async (req, res) => {
 
     res.json({ message: "Task Updated" });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    console.log("🔥 TASK UPDATE ERROR:", err.message);
+    res.status(500).send(err.message);
   }
 });
 
-/* ================= USER ================= */
+app.put("/tasks/edit/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+
+    await pool.query(
+      "UPDATE tasks SET title = $1 WHERE id = $2",
+      [title, id]
+    );
+
+    res.json({ message: "Task Updated Successfully" });
+  } catch (err) {
+    console.log("🔥 TASK EDIT ERROR:", err.message);
+    res.status(500).send(err.message);
+  }
+});
+
+// ================= USER =================
 
 app.get("/user/:id", async (req, res) => {
   try {
@@ -173,15 +197,19 @@ app.get("/user/:id", async (req, res) => {
 
     res.json(user.rows[0]);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    console.log("🔥 USER ERROR:", err.message);
+    res.status(500).send(err.message);
   }
 });
+
+// ================= TEST =================
+
 app.get("/test", (req, res) => {
-  res.send("Route working");
+  res.send("Route working ✅");
 });
-/* ================= SERVER START ================= */
+
+// ================= SERVER =================
 
 app.listen(5000, () => {
-  console.log("Server running on port 5000");
+  console.log("🚀 Server running on port 5000");
 });

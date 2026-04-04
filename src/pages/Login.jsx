@@ -7,7 +7,6 @@ function Login() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  // ✅ Render backend URL
   const BASE_URL = "https://dashtracker-backend-1.onrender.com";
 
   const handleLogin = async (e) => {
@@ -29,22 +28,18 @@ function Login() {
 
       const data = await res.json();
 
+      console.log("🔥 LOGIN RESPONSE:", data);
+
       if (!res.ok) {
         alert(data.message || "Login failed");
         return;
       }
 
-      // ✅ Store token
-      localStorage.setItem("token", data.token);
+      // ✅ FIX: direct user object aa raha hai
+      localStorage.setItem("user", JSON.stringify(data));
 
-      // ✅ Store user (id + email)
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: data.user.id,
-          email: data.user.email,
-        })
-      );
+      // ❌ token nahi hai backend me → hata diya
+      // localStorage.setItem("token", data.token);
 
       navigate("/dashboard");
 

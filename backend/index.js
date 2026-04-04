@@ -11,7 +11,7 @@ app.use(express.json());
 
 // ================= ROOT =================
 app.get("/", (req, res) => {
-  res.send("Backend Running 🚀");
+  res.send("Backend working 🚀");
 });
 
 // ================= DB TEST =================
@@ -38,15 +38,15 @@ app.post("/register", async (req, res) => {
     );
 
     res.json(newUser.rows[0]);
+
   } catch (err) {
     console.log("🔥 REGISTER ERROR:", err.message);
-    res.status(500).send(err.message);
+    res.status(500).json({ message: err.message }); // ✅ FIX
   }
 });
 
 // LOGIN
 app.post("/login", async (req, res) => {
-
   console.log("🔥 LOGIN BODY:", req.body);
 
   try {
@@ -71,11 +71,11 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Incorrect password" });
     }
 
-    res.json(user.rows[0]);
+    res.json(user.rows[0]); // ✅ always JSON
 
   } catch (err) {
     console.log("🔥 LOGIN ERROR:", err.message);
-    res.status(500).send(err.message);
+    res.status(500).json({ message: err.message }); // ✅ FIX
   }
 });
 
@@ -93,9 +93,10 @@ app.post("/subjects", async (req, res) => {
     );
 
     res.json(subject.rows[0]);
+
   } catch (err) {
     console.log("🔥 SUBJECT ERROR:", err.message);
-    res.status(500).send(err.message);
+    res.status(500).json({ message: err.message }); // ✅ FIX
   }
 });
 
@@ -109,9 +110,10 @@ app.get("/subjects/:userId", async (req, res) => {
     );
 
     res.json(subjects.rows);
+
   } catch (err) {
     console.log("🔥 GET SUBJECT ERROR:", err.message);
-    res.status(500).send(err.message);
+    res.status(500).json({ message: err.message }); // ✅ FIX
   }
 });
 
@@ -127,9 +129,10 @@ app.post("/topics", async (req, res) => {
     );
 
     res.json(topic.rows[0]);
+
   } catch (err) {
     console.log("🔥 TOPIC ERROR:", err.message);
-    res.status(500).send(err.message);
+    res.status(500).json({ message: err.message }); // ✅ FIX
   }
 });
 
@@ -145,9 +148,10 @@ app.post("/tasks", async (req, res) => {
     );
 
     res.json(task.rows[0]);
+
   } catch (err) {
     console.log("🔥 TASK ERROR:", err.message);
-    res.status(500).send(err.message);
+    res.status(500).json({ message: err.message }); // ✅ FIX
   }
 });
 
@@ -161,9 +165,10 @@ app.put("/tasks/:id", async (req, res) => {
     );
 
     res.json({ message: "Task Updated" });
+
   } catch (err) {
     console.log("🔥 TASK UPDATE ERROR:", err.message);
-    res.status(500).send(err.message);
+    res.status(500).json({ message: err.message }); // ✅ FIX
   }
 });
 
@@ -178,9 +183,10 @@ app.put("/tasks/edit/:id", async (req, res) => {
     );
 
     res.json({ message: "Task Updated Successfully" });
+
   } catch (err) {
     console.log("🔥 TASK EDIT ERROR:", err.message);
-    res.status(500).send(err.message);
+    res.status(500).json({ message: err.message }); // ✅ FIX
   }
 });
 
@@ -196,9 +202,10 @@ app.get("/user/:id", async (req, res) => {
     );
 
     res.json(user.rows[0]);
+
   } catch (err) {
     console.log("🔥 USER ERROR:", err.message);
-    res.status(500).send(err.message);
+    res.status(500).json({ message: err.message }); // ✅ FIX
   }
 });
 
@@ -207,9 +214,7 @@ app.get("/user/:id", async (req, res) => {
 app.get("/test", (req, res) => {
   res.send("Route working ✅");
 });
-app.get("/", (req, res) => {
-  res.send("Backend working 🚀");
-});
+
 // ================= SERVER =================
 
 app.listen(5000, () => {

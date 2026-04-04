@@ -5,7 +5,7 @@ import "./AddActivity.css";
 function AddActivity() {
 
   const [topic, setTopic] = useState("");
-  const [hours, setHours] = useState("");
+  const [hours, setHours] = useState("");//test
 
   // ✅ Render backend URL
   const BASE_URL = "https://dashtracker-backend-1.onrender.com";

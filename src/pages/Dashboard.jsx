@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 
-const BASE_URL = "https://dashtracker-backen.onrender.com";
+const BASE_URL = "https://dashtracker-backend-1.onrender.com";
 
 function Dashboard() {
   const navigate = useNavigate();

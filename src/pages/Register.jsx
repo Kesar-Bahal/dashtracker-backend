@@ -10,7 +10,7 @@ function Register() {
   const navigate = useNavigate();
 
   // ✅ Render backend URL
-  const BASE_URL = "https://dashtracker-backen.onrender.com";
+  const BASE_URL = "https://dashtracker-backend-1.onrender.com";
 
   const handleRegister = async (e) => {
     e.preventDefault();

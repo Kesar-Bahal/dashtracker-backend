@@ -8,7 +8,7 @@ function AddActivity() {
   const [hours, setHours] = useState("");
 
   // ✅ Render backend URL
-  const BASE_URL = "https://dashtracker-backen.onrender.com";
+  const BASE_URL = "https://dashtracker-backend-1.onrender.com";
 
   const handleSubmit = async (e) => {
     e.preventDefault();

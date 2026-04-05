@@ -26,10 +26,6 @@ app.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "All fields required" });
-    }
-
     const newUser = await pool.query(
       "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *",
       [name, email, password]
@@ -38,7 +34,6 @@ app.post("/register", async (req, res) => {
     res.status(201).json(newUser.rows[0]);
 
   } catch (err) {
-    console.log("🔥 REGISTER ERROR:", err.message);
     res.status(500).json({ message: err.message });
   }
 });
@@ -47,10 +42,6 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email or Password missing" });
-    }
 
     const user = await pool.query(
       "SELECT * FROM users WHERE email = $1",
@@ -65,17 +56,83 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Incorrect password" });
     }
 
-    res.status(200).json(user.rows[0]);
+    res.json(user.rows[0]);
 
   } catch (err) {
-    console.log("🔥 LOGIN ERROR:", err.message);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ================= TEST =================
-app.get("/test", (req, res) => {
-  res.send("Route working ✅");
+// ================= SUBJECTS =================
+
+// ADD SUBJECT
+app.post("/subjects", async (req, res) => {
+  try {
+    const { user_id, name } = req.body;
+
+    const subject = await pool.query(
+      "INSERT INTO subjects (user_id, name) VALUES ($1, $2) RETURNING *",
+      [user_id, name]
+    );
+
+    res.json(subject.rows[0]);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET SUBJECTS BY USER
+app.get("/subjects/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const subjects = await pool.query(
+      "SELECT * FROM subjects WHERE user_id = $1",
+      [userId]
+    );
+
+    res.json(subjects.rows);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ================= TOPICS =================
+
+app.post("/topics", async (req, res) => {
+  try {
+    const { subject_id, name } = req.body;
+
+    const topic = await pool.query(
+      "INSERT INTO topics (subject_id, name) VALUES ($1, $2) RETURNING *",
+      [subject_id, name]
+    );
+
+    res.json(topic.rows[0]);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ================= TASKS =================
+
+app.post("/tasks", async (req, res) => {
+  try {
+    const { topic_id, title } = req.body;
+
+    const task = await pool.query(
+      "INSERT INTO tasks (topic_id, title) VALUES ($1, $2) RETURNING *",
+      [topic_id, title]
+    );
+
+    res.json(task.rows[0]);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // ================= SERVER =================

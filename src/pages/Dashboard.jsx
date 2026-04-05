@@ -19,7 +19,7 @@ function Dashboard() {
 
   const selectedSubject = subjects[selectedIndex] || { topics: [] };
 
-  /* ================= LOAD SUBJECTS ================= */
+  /* ================= LOAD FULL DATA ================= */
   useEffect(() => {
     if (!user) {
       navigate("/");
@@ -30,14 +30,31 @@ function Dashboard() {
 
     fetch(`${BASE_URL}/subjects/${user.id}`)
       .then(res => res.json())
-      .then(data => {
-        const formatted = data.map(s => ({
-          ...s,
-          topics: [],
-        }));
-        setSubjects(formatted);
+      .then(async (data) => {
+
+        const fullData = await Promise.all(
+          data.map(async (sub) => {
+
+            const topicsRes = await fetch(`${BASE_URL}/topics/${sub.id}`);
+            const topics = await topicsRes.json();
+
+            const topicsWithTasks = await Promise.all(
+              topics.map(async (t) => {
+                const taskRes = await fetch(`${BASE_URL}/tasks/${t.id}`);
+                const tasks = await taskRes.json();
+
+                return { ...t, tasks };
+              })
+            );
+
+            return { ...sub, topics: topicsWithTasks };
+          })
+        );
+
+        setSubjects(fullData);
       })
       .catch(err => console.log(err));
+
   }, []);
 
   const handleLogout = () => {
@@ -57,7 +74,7 @@ function Dashboard() {
       },
       body: JSON.stringify({
         name: newSubject,
-        user_id: user.id   // 🔥 IMPORTANT FIX
+        user_id: user.id
       })
     });
 
@@ -161,6 +178,24 @@ function Dashboard() {
     setSubjects(updated);
   };
 
+  /* ================= STATS ================= */
+
+  const totalTasks =
+    selectedSubject.topics.reduce(
+      (acc, t) => acc + (t.tasks?.length || 0),
+      0
+    );
+
+  const completedTasks =
+    selectedSubject.topics.reduce(
+      (acc, t) =>
+        acc + (t.tasks?.filter(task => task.completed).length || 0),
+      0
+    );
+
+  const progress =
+    totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
   /* ================= UI ================= */
 
   return (
@@ -215,6 +250,24 @@ function Dashboard() {
 
         <h1>{selectedSubject.name}</h1>
 
+        {/* ✅ STATS BACK */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <h4>Total Tasks</h4>
+            <p>{totalTasks}</p>
+          </div>
+
+          <div className="stat-card">
+            <h4>Completed</h4>
+            <p>{completedTasks}</p>
+          </div>
+
+          <div className="stat-card">
+            <h4>Progress</h4>
+            <p>{progress}%</p>
+          </div>
+        </div>
+
         {/* ADD TOPIC */}
         <div className="add-section">
           <input
@@ -240,7 +293,6 @@ function Dashboard() {
                 </div>
               </div>
 
-              {/* TASKS */}
               {topic.tasks.map((task, taskIndex) => (
                 <div key={task.id} className="task-item">
 
@@ -267,7 +319,6 @@ function Dashboard() {
                 </div>
               ))}
 
-              {/* ADD TASK */}
               <div className="add-section small">
                 <input
                   type="text"

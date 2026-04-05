@@ -82,7 +82,7 @@ app.post("/subjects", async (req, res) => {
   }
 });
 
-// GET SUBJECTS BY USER
+// GET SUBJECTS
 app.get("/subjects/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
@@ -93,6 +93,20 @@ app.get("/subjects/:userId", async (req, res) => {
     );
 
     res.json(subjects.rows);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// 🔥 DELETE SUBJECT
+app.delete("/subjects/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await pool.query("DELETE FROM subjects WHERE id = $1", [id]);
+
+    res.json({ message: "Subject deleted" });
 
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -118,7 +132,7 @@ app.post("/topics", async (req, res) => {
   }
 });
 
-// ✅ GET TOPICS (FIX)
+// GET TOPICS
 app.get("/topics/:subjectId", async (req, res) => {
   try {
     const { subjectId } = req.params;
@@ -129,6 +143,20 @@ app.get("/topics/:subjectId", async (req, res) => {
     );
 
     res.json(topics.rows);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// 🔥 DELETE TOPIC
+app.delete("/topics/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await pool.query("DELETE FROM topics WHERE id = $1", [id]);
+
+    res.json({ message: "Topic deleted" });
 
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -154,7 +182,7 @@ app.post("/tasks", async (req, res) => {
   }
 });
 
-// ✅ GET TASKS (FIX)
+// GET TASKS
 app.get("/tasks/:topicId", async (req, res) => {
   try {
     const { topicId } = req.params;
@@ -164,7 +192,21 @@ app.get("/tasks/:topicId", async (req, res) => {
       [topicId]
     );
 
-    res.json(tasks.rows);//test
+    res.json(tasks.rows);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// 🔥 DELETE TASK
+app.delete("/tasks/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await pool.query("DELETE FROM tasks WHERE id = $1", [id]);
+
+    res.json({ message: "Task deleted" });
 
   } catch (err) {
     res.status(500).json({ message: err.message });

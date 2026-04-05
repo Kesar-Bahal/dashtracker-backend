@@ -101,6 +101,7 @@ app.get("/subjects/:userId", async (req, res) => {
 
 // ================= TOPICS =================
 
+// ADD TOPIC
 app.post("/topics", async (req, res) => {
   try {
     const { subject_id, name } = req.body;
@@ -117,8 +118,26 @@ app.post("/topics", async (req, res) => {
   }
 });
 
+// ✅ GET TOPICS (FIX)
+app.get("/topics/:subjectId", async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+
+    const topics = await pool.query(
+      "SELECT * FROM topics WHERE subject_id = $1",
+      [subjectId]
+    );
+
+    res.json(topics.rows);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ================= TASKS =================
 
+// ADD TASK
 app.post("/tasks", async (req, res) => {
   try {
     const { topic_id, title } = req.body;
@@ -129,6 +148,23 @@ app.post("/tasks", async (req, res) => {
     );
 
     res.json(task.rows[0]);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ✅ GET TASKS (FIX)
+app.get("/tasks/:topicId", async (req, res) => {
+  try {
+    const { topicId } = req.params;
+
+    const tasks = await pool.query(
+      "SELECT * FROM tasks WHERE topic_id = $1",
+      [topicId]
+    );
+
+    res.json(tasks.rows);//test
 
   } catch (err) {
     res.status(500).json({ message: err.message });

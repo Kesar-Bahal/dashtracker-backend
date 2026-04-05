@@ -13,15 +13,14 @@ function Dashboard() {
   const [newTopic, setNewTopic] = useState("");
   const [newTask, setNewTask] = useState({});
   const [darkMode, setDarkMode] = useState(true);
-  const [visits, setVisits] = useState(0);
   const [userEmail, setUserEmail] = useState("");
+
+  const user = JSON.parse(localStorage.getItem("user"));
 
   const selectedSubject = subjects[selectedIndex] || { topics: [] };
 
-  /* ================= LOAD DATA ================= */
+  /* ================= LOAD SUBJECTS ================= */
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-
     if (!user) {
       navigate("/");
       return;
@@ -29,42 +28,20 @@ function Dashboard() {
 
     setUserEmail(user.email);
 
-    // ✅ FIXED: correct route
     fetch(`${BASE_URL}/subjects/${user.id}`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          // topics default add
-          const formatted = data.map(s => ({
-            ...s,
-            topics: []
-          }));
-          setSubjects(formatted);
-        }
-      });
-  }, [navigate]);
-
-  /* ================= VISITS ================= */
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) return;
-
-    const sessionKey = `visited_${user.id}`;
-    if (sessionStorage.getItem(sessionKey)) return;
-
-    const key = `visits_${user.id}`;
-    const stored = localStorage.getItem(key);
-    const count = stored ? +stored + 1 : 1;
-
-    localStorage.setItem(key, count);
-    setVisits(count);
-
-    sessionStorage.setItem(sessionKey, "true");
+        const formatted = data.map(s => ({
+          ...s,
+          topics: [],
+        }));
+        setSubjects(formatted);
+      })
+      .catch(err => console.log(err));
   }, []);
 
   const handleLogout = () => {
     localStorage.clear();
-    sessionStorage.clear();
     navigate("/");
   };
 
@@ -73,8 +50,6 @@ function Dashboard() {
   const addSubject = async () => {
     if (!newSubject.trim()) return;
 
-    const user = JSON.parse(localStorage.getItem("user"));
-
     const res = await fetch(`${BASE_URL}/subjects`, {
       method: "POST",
       headers: {
@@ -82,7 +57,7 @@ function Dashboard() {
       },
       body: JSON.stringify({
         name: newSubject,
-        user_id: user.id
+        user_id: user.id   // 🔥 IMPORTANT FIX
       })
     });
 
@@ -92,13 +67,17 @@ function Dashboard() {
     setNewSubject("");
   };
 
-  const deleteSubject = async (id) => {
-    await fetch(`${BASE_URL}/subjects/${id}`, {
-      method: "DELETE"
-    });
+  const editSubject = (index) => {
+    const newName = prompt("Edit subject name:");
+    if (!newName) return;
 
+    const updated = [...subjects];
+    updated[index].name = newName;
+    setSubjects(updated);
+  };
+
+  const deleteSubject = (id) => {
     setSubjects(subjects.filter(s => s.id !== id));
-    setSelectedIndex(0);
   };
 
   /* ================= TOPIC ================= */
@@ -121,24 +100,30 @@ function Dashboard() {
 
     const updated = [...subjects];
     updated[selectedIndex].topics.push({ ...data, tasks: [] });
+
     setSubjects(updated);
     setNewTopic("");
   };
 
-  const deleteTopic = async (topicId, topicIndex) => {
-    await fetch(`${BASE_URL}/topics/${topicId}`, {
-      method: "DELETE"
-    });
+  const editTopic = (id, index) => {
+    const newName = prompt("Edit topic");
+    if (!newName) return;
 
     const updated = [...subjects];
-    updated[selectedIndex].topics.splice(topicIndex, 1);
+    updated[selectedIndex].topics[index].name = newName;
+    setSubjects(updated);
+  };
+
+  const deleteTopic = (id, index) => {
+    const updated = [...subjects];
+    updated[selectedIndex].topics.splice(index, 1);
     setSubjects(updated);
   };
 
   /* ================= TASK ================= */
 
   const addTask = async (topicIndex) => {
-    if (!newTask[topicIndex]?.trim()) return;
+    if (!newTask[topicIndex]) return;
 
     const topic = selectedSubject.topics[topicIndex];
 
@@ -157,27 +142,20 @@ function Dashboard() {
 
     const updated = [...subjects];
     updated[selectedIndex].topics[topicIndex].tasks.push(data);
+
     setSubjects(updated);
     setNewTask({ ...newTask, [topicIndex]: "" });
   };
 
-  const toggleTask = async (topicIndex, taskIndex) => {
+  const toggleTask = (topicIndex, taskIndex) => {
     const updated = [...subjects];
     const task = updated[selectedIndex].topics[topicIndex].tasks[taskIndex];
-
-    await fetch(`${BASE_URL}/tasks/${task.id}`, {
-      method: "PUT"
-    });
 
     task.completed = !task.completed;
     setSubjects(updated);
   };
 
-  const deleteTask = async (taskId, topicIndex, taskIndex) => {
-    await fetch(`${BASE_URL}/tasks/${taskId}`, {
-      method: "DELETE"
-    });
-
+  const deleteTask = (id, topicIndex, taskIndex) => {
     const updated = [...subjects];
     updated[selectedIndex].topics[topicIndex].tasks.splice(taskIndex, 1);
     setSubjects(updated);
@@ -188,6 +166,7 @@ function Dashboard() {
   return (
     <div className={`dashboard ${darkMode ? "dark" : "light"}`}>
 
+      {/* SIDEBAR */}
       <div className="sidebar">
         <h2>DashTracker</h2>
 
@@ -198,66 +177,117 @@ function Dashboard() {
             onClick={() => setSelectedIndex(index)}
           >
             <span>{sub.name}</span>
-            <button onClick={() => deleteSubject(sub.id)}>🗑</button>
+
+            <div className="subject-actions" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => editSubject(index)}>✏️</button>
+              <button onClick={() => deleteSubject(sub.id)}>🗑️</button>
+            </div>
           </div>
         ))}
 
-        <input
-          type="text"
-          placeholder="New Subject"
-          value={newSubject}
-          onChange={(e) => setNewSubject(e.target.value)}
-        />
-        <button onClick={addSubject}>+ Add</button>
+        <div className="add-section">
+          <input
+            type="text"
+            placeholder="New Subject"
+            value={newSubject}
+            onChange={(e) => setNewSubject(e.target.value)}
+          />
+          <button onClick={addSubject}>+ Add</button>
+        </div>
       </div>
 
+      {/* MAIN */}
       <div className="main-content">
-        <h3>{userEmail}</h3>
-        <button onClick={handleLogout}>Logout</button>
+
+        <div className="topbar">
+          <div>
+            <h3>Welcome Back 👋</h3>
+            <small>{userEmail}</small>
+          </div>
+
+          <div className="top-buttons">
+            <button onClick={() => setDarkMode(!darkMode)}>
+              {darkMode ? "☀ Light" : "🌙 Dark"}
+            </button>
+            <button onClick={handleLogout}>Logout</button>
+          </div>
+        </div>
 
         <h1>{selectedSubject.name}</h1>
 
-        <input
-          type="text"
-          placeholder="New Topic"
-          value={newTopic}
-          onChange={(e) => setNewTopic(e.target.value)}
-        />
-        <button onClick={addTopic}>+ Add Topic</button>
+        {/* ADD TOPIC */}
+        <div className="add-section">
+          <input
+            type="text"
+            placeholder="New Topic"
+            value={newTopic}
+            onChange={(e) => setNewTopic(e.target.value)}
+          />
+          <button onClick={addTopic}>+ Add Topic</button>
+        </div>
 
-        {selectedSubject.topics?.map((topic, topicIndex) => (
-          <div key={topic.id}>
-            <h3>{topic.name}</h3>
-            <button onClick={() => deleteTopic(topic.id, topicIndex)}>🗑</button>
+        {/* TOPICS */}
+        <div className="topics">
+          {selectedSubject.topics.map((topic, topicIndex) => (
+            <div key={topic.id} className="topic-card">
 
-            {topic.tasks.map((task, taskIndex) => (
-              <div key={task.id}>
-                <span
-                  onClick={() => toggleTask(topicIndex, taskIndex)}
-                  style={{ textDecoration: task.completed ? "line-through" : "none" }}
-                >
-                  {task.title}
-                </span>
-                <button onClick={() =>
-                  deleteTask(task.id, topicIndex, taskIndex)
-                }>❌</button>
+              <div className="topic-header">
+                <h3>{topic.name}</h3>
+
+                <div className="topic-actions">
+                  <button onClick={() => editTopic(topic.id, topicIndex)}>✏️</button>
+                  <button onClick={() => deleteTopic(topic.id, topicIndex)}>🗑️</button>
+                </div>
               </div>
-            ))}
 
-            <input
-              type="text"
-              placeholder="New Task"
-              value={newTask[topicIndex] || ""}
-              onChange={(e) =>
-                setNewTask({
-                  ...newTask,
-                  [topicIndex]: e.target.value
-                })
-              }
-            />
-            <button onClick={() => addTask(topicIndex)}>+ Task</button>
-          </div>
-        ))}
+              {/* TASKS */}
+              {topic.tasks.map((task, taskIndex) => (
+                <div key={task.id} className="task-item">
+
+                  <div
+                    className="task-left"
+                    onClick={() => toggleTask(topicIndex, taskIndex)}
+                  >
+                    <div className={`checkbox ${task.completed ? "checked" : ""}`}>
+                      {task.completed && "✔"}
+                    </div>
+
+                    <span className={task.completed ? "completed" : ""}>
+                      {task.title}
+                    </span>
+                  </div>
+
+                  <div className="task-actions">
+                    <button>✏️</button>
+                    <button onClick={() =>
+                      deleteTask(task.id, topicIndex, taskIndex)
+                    }>🗑️</button>
+                  </div>
+
+                </div>
+              ))}
+
+              {/* ADD TASK */}
+              <div className="add-section small">
+                <input
+                  type="text"
+                  placeholder="New Task"
+                  value={newTask[topicIndex] || ""}
+                  onChange={(e) =>
+                    setNewTask({
+                      ...newTask,
+                      [topicIndex]: e.target.value
+                    })
+                  }
+                />
+                <button onClick={() => addTask(topicIndex)}>
+                  + Add Task
+                </button>
+              </div>
+
+            </div>
+          ))}
+        </div>
 
       </div>
     </div>
